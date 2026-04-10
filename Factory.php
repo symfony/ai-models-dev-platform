@@ -13,10 +13,13 @@ namespace Symfony\AI\Platform\Bridge\ModelsDev;
 
 use Symfony\AI\Platform\Bridge\Generic\CompletionsModel;
 use Symfony\AI\Platform\Bridge\Generic\EmbeddingsModel;
-use Symfony\AI\Platform\Bridge\Generic\PlatformFactory as GenericPlatformFactory;
+use Symfony\AI\Platform\Bridge\Generic\Factory as GenericFactory;
 use Symfony\AI\Platform\Contract;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
+use Symfony\AI\Platform\ModelRouter\CatalogBasedModelRouter;
+use Symfony\AI\Platform\ModelRouterInterface;
 use Symfony\AI\Platform\Platform;
+use Symfony\AI\Platform\ProviderInterface;
 use Symfony\Component\HttpClient\EventSourceHttpClient;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -26,7 +29,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-final class PlatformFactory
+final class Factory
 {
     /**
      * Well-known API base URLs for providers whose models.dev entry
@@ -47,7 +50,7 @@ final class PlatformFactory
         '@ai-sdk/xai' => 'https://api.x.ai',
     ];
 
-    public static function create(
+    public static function createProvider(
         string $provider,
         #[\SensitiveParameter] ?string $apiKey = null,
         ?string $baseUrl = null,
@@ -55,7 +58,7 @@ final class PlatformFactory
         ?Contract $contract = null,
         ?HttpClientInterface $httpClient = null,
         ?EventDispatcherInterface $eventDispatcher = null,
-    ): Platform {
+    ): ProviderInterface {
         $httpClient = $httpClient instanceof EventSourceHttpClient ? $httpClient : new EventSourceHttpClient($httpClient);
 
         $data = DataLoader::load($dataPath);
@@ -76,7 +79,7 @@ final class PlatformFactory
                 throw new InvalidArgumentException(\sprintf('Provider "%s" requires a specialized bridge (%s); install it with composer require "%s".', $provider, $npmPackage, $package));
             }
             if (!BridgeResolver::isRoutable($npmPackage)) {
-                throw new InvalidArgumentException(\sprintf('Provider "%s" requires "%s" which has a different factory signature; use "%s::create()" directly.', $provider, $package, $factoryClass));
+                throw new InvalidArgumentException(\sprintf('Provider "%s" requires "%s" which has a different factory signature; use "%s::createProvider()" directly.', $provider, $package, $factoryClass));
             }
 
             $modelCatalog = new ModelCatalog(
@@ -86,12 +89,13 @@ final class PlatformFactory
                 embeddingsModelClass: BridgeResolver::getEmbeddingsModelClass($npmPackage),
             );
 
-            return $factoryClass::create(
+            return $factoryClass::createProvider(
                 apiKey: $apiKey,
                 modelCatalog: $modelCatalog,
                 contract: $contract,
                 httpClient: $httpClient,
                 eventDispatcher: $eventDispatcher,
+                name: $provider,
             );
         }
 
@@ -128,7 +132,7 @@ final class PlatformFactory
             }
         }
 
-        return GenericPlatformFactory::create(
+        return GenericFactory::createProvider(
             baseUrl: $baseUrl,
             apiKey: $apiKey,
             modelCatalog: $modelCatalog,
@@ -137,6 +141,24 @@ final class PlatformFactory
             eventDispatcher: $eventDispatcher,
             supportsCompletions: $supportsCompletions,
             supportsEmbeddings: $supportsEmbeddings,
+            name: $provider,
+        );
+    }
+
+    public static function createPlatform(
+        string $provider,
+        #[\SensitiveParameter] ?string $apiKey = null,
+        ?string $baseUrl = null,
+        ?string $dataPath = null,
+        ?Contract $contract = null,
+        ?HttpClientInterface $httpClient = null,
+        ?EventDispatcherInterface $eventDispatcher = null,
+        ?ModelRouterInterface $modelRouter = null,
+    ): Platform {
+        return new Platform(
+            [self::createProvider($provider, $apiKey, $baseUrl, $dataPath, $contract, $httpClient, $eventDispatcher)],
+            $modelRouter ?? new CatalogBasedModelRouter(),
+            $eventDispatcher,
         );
     }
 }

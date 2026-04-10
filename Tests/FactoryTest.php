@@ -12,21 +12,21 @@
 namespace Symfony\AI\Platform\Bridge\ModelsDev\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Symfony\AI\Platform\Bridge\Anthropic\PlatformFactory as AnthropicPlatformFactory;
-use Symfony\AI\Platform\Bridge\Gemini\PlatformFactory as GeminiPlatformFactory;
-use Symfony\AI\Platform\Bridge\ModelsDev\PlatformFactory;
-use Symfony\AI\Platform\Bridge\VertexAi\PlatformFactory as VertexAiPlatformFactory;
+use Symfony\AI\Platform\Bridge\Anthropic\Factory as AnthropicFactory;
+use Symfony\AI\Platform\Bridge\Gemini\Factory as GeminiFactory;
+use Symfony\AI\Platform\Bridge\ModelsDev\Factory;
+use Symfony\AI\Platform\Bridge\VertexAi\Factory as VertexAiFactory;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
 use Symfony\AI\Platform\Platform;
 
 /**
  * @author Fabien Potencier <fabien@symfony.com>
  */
-final class PlatformFactoryTest extends TestCase
+final class FactoryTest extends TestCase
 {
     public function testCreateWithProviderThatHasApiBaseUrl()
     {
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'deepseek',
             apiKey: 'test-key',
         );
@@ -36,7 +36,7 @@ final class PlatformFactoryTest extends TestCase
 
     public function testCreateWithExplicitBaseUrl()
     {
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'openai',
             apiKey: 'test-key',
             baseUrl: 'https://api.openai.com/v1',
@@ -47,7 +47,7 @@ final class PlatformFactoryTest extends TestCase
 
     public function testCreateWithWellKnownNpmPackageProvider()
     {
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'openai',
             apiKey: 'test-key',
         );
@@ -60,7 +60,7 @@ final class PlatformFactoryTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('does not have a known API base URL');
 
-        PlatformFactory::create(
+        Factory::createPlatform(
             provider: 'azure',
             apiKey: 'test-key',
         );
@@ -68,7 +68,7 @@ final class PlatformFactoryTest extends TestCase
 
     public function testCreateWithProviderHavingApiUrl()
     {
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'deepseek',
             apiKey: 'test-key',
         );
@@ -79,11 +79,11 @@ final class PlatformFactoryTest extends TestCase
     public function testProviderWithAnthropicBridgeRoutesAutomatically()
     {
         // If symfony/ai-anthropic-platform is installed, it should route automatically
-        if (!class_exists(AnthropicPlatformFactory::class)) {
+        if (!class_exists(AnthropicFactory::class)) {
             $this->markTestSkipped('Anthropic bridge not installed');
         }
 
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'anthropic',
             apiKey: 'test-key',
         );
@@ -94,11 +94,11 @@ final class PlatformFactoryTest extends TestCase
     public function testProviderUsingAnthropicApiRoutesAutomatically()
     {
         // Providers like minimax use Anthropic's API format
-        if (!class_exists(AnthropicPlatformFactory::class)) {
+        if (!class_exists(AnthropicFactory::class)) {
             $this->markTestSkipped('Anthropic bridge not installed');
         }
 
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'minimax',
             apiKey: 'test-key',
         );
@@ -109,11 +109,11 @@ final class PlatformFactoryTest extends TestCase
     public function testProviderWithGeminiBridgeRoutesAutomatically()
     {
         // If symfony/ai-gemini-platform is installed, it should route automatically
-        if (!class_exists(GeminiPlatformFactory::class)) {
+        if (!class_exists(GeminiFactory::class)) {
             $this->markTestSkipped('Gemini bridge not installed');
         }
 
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'google',
             apiKey: 'test-key',
         );
@@ -129,13 +129,13 @@ final class PlatformFactoryTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
 
-        if (class_exists(VertexAiPlatformFactory::class)) {
+        if (class_exists(VertexAiFactory::class)) {
             $this->expectExceptionMessage('Provider "google-vertex" requires "symfony/ai-vertex-ai-platform" which has a different factory signature');
         } else {
             $this->expectExceptionMessage('Provider "google-vertex" requires a specialized bridge (@ai-sdk/google-vertex); install it with composer require "symfony/ai-vertex-ai-platform".');
         }
 
-        PlatformFactory::create(
+        Factory::createPlatform(
             provider: 'google-vertex',
             apiKey: 'test-key',
         );
@@ -144,7 +144,7 @@ final class PlatformFactoryTest extends TestCase
     public function testAutoDetectsCompletionsAndEmbeddingsSupport()
     {
         // OpenAI has both completions and embeddings models
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'openai',
             apiKey: 'test-key',
             baseUrl: 'https://api.openai.com/v1',
@@ -153,7 +153,7 @@ final class PlatformFactoryTest extends TestCase
         $this->assertInstanceOf(Platform::class, $platform);
 
         // DeepSeek also has both types
-        $platform = PlatformFactory::create(
+        $platform = Factory::createPlatform(
             provider: 'deepseek',
             apiKey: 'test-key',
         );
