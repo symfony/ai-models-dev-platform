@@ -1,15 +1,14 @@
 Models.dev Platform
 ===================
 
-Models.dev platform bridge for Symfony AI provides a universal bridge providing
-access to all AI providers available on [models.dev](https://models.dev).
+Models.dev platform bridge for Symfony AI provides up-to-date model catalogs for many
+AI providers, sourced from the [models.dev](https://models.dev) community registry and
+shipped as the standalone `symfony/models-dev` package.
 
-All providers use the same interface: OpenAI-compatible providers work
-out-of-the-box and automatic routing to specialized bridges for the other ones
-(Anthropic, Gemini, ...).
-
-The bridge also automatically discover model capabilities, pricing, and API
-requirements.
+It decouples the model-catalog lifecycle from the Symfony AI release cycle: drop a
+models.dev `ModelCatalog` into any bridge and refresh the model list (and its discovered
+capabilities) with `composer update symfony/models-dev`, without waiting for a new release
+or hand-curating catalogs.
 
 See the [full documentation](https://symfony.com/doc/current/ai/components/platform/models-dev.html)
 for usage and configuration details.

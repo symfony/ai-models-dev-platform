@@ -27,11 +27,21 @@ final class ProviderRegistryTest extends TestCase
         $this->assertSame('https://api.deepseek.com', $registry->getApiBaseUrl('deepseek'));
     }
 
-    public function testGetApiBaseUrlReturnsNullForProvidersWithoutApi()
+    public function testGetApiBaseUrlUsesNpmPackageFallback()
     {
         $registry = new ProviderRegistry();
 
-        $this->assertNull($registry->getApiBaseUrl('openai'));
+        // These providers omit the "api" field in models.dev; the URL is resolved from the
+        // well-known npm-package fallback table.
+        $this->assertSame('https://api.openai.com', $registry->getApiBaseUrl('openai'));
+        $this->assertSame('https://api.groq.com/openai', $registry->getApiBaseUrl('groq'));
+    }
+
+    public function testGetApiBaseUrlReturnsNullWhenNoUrlIsKnown()
+    {
+        $registry = new ProviderRegistry();
+
+        $this->assertNull($registry->getApiBaseUrl('azure'));
     }
 
     public function testGetProviderName()
@@ -64,7 +74,7 @@ final class ProviderRegistryTest extends TestCase
         $this->assertContains('mistral', $ids);
         $this->assertContains('deepseek', $ids);
 
-        // Providers with specialized bridges are also listed (routing handled by Factory)
+        // Providers served by specialized bridges are also listed
         $this->assertContains('anthropic', $ids);
         $this->assertContains('google', $ids);
         $this->assertContains('minimax', $ids);

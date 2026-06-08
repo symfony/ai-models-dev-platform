@@ -12,9 +12,11 @@
 namespace Symfony\AI\Platform\Bridge\ModelsDev\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\AI\Platform\Bridge\Anthropic\Claude;
 use Symfony\AI\Platform\Bridge\Generic\CompletionsModel;
 use Symfony\AI\Platform\Bridge\Generic\EmbeddingsModel;
 use Symfony\AI\Platform\Bridge\ModelsDev\ModelCatalog;
+use Symfony\AI\Platform\Bridge\VertexAi\Gemini\Model as VertexAiGemini;
 use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\Exception\InvalidArgumentException;
 use Symfony\AI\Platform\Exception\ModelNotFoundException;
@@ -74,14 +76,49 @@ final class ModelCatalogTest extends TestCase
         new ModelCatalog('nonexistent-provider');
     }
 
-    public function testProvidersWithSpecializedBridgesCanCreateCatalog()
+    public function testAppliesSpecializedModelClassForProvidersWithABridge()
     {
-        // ModelCatalog can be created for all providers, including those with specialized bridges
-        // The routing to specialized bridges happens in Factory
-        $catalog = new ModelCatalog('anthropic');
+        if (!class_exists(Claude::class)) {
+            $this->markTestSkipped('Anthropic bridge not installed');
+        }
 
-        $this->assertNotEmpty($catalog->getModels());
-        $this->assertArrayHasKey('claude-3-5-sonnet-20241022', $catalog->getModels());
+        // Anthropic models must be wired with the Claude class so the catalog drops into the
+        // Anthropic bridge (whose ModelClient only accepts Claude models).
+        $catalog = new ModelCatalog('anthropic');
+        $classes = array_column($catalog->getModels(), 'class');
+
+        $this->assertContains(Claude::class, $classes);
+        $this->assertNotContains(CompletionsModel::class, $classes);
+    }
+
+    public function testAppliesVertexAiModelClassForGoogleVertex()
+    {
+        if (!class_exists(VertexAiGemini::class)) {
+            $this->markTestSkipped('VertexAI bridge not installed');
+        }
+
+        $catalog = new ModelCatalog('google-vertex');
+        $classes = array_column($catalog->getModels(), 'class');
+
+        $this->assertContains(VertexAiGemini::class, $classes);
+        $this->assertNotContains(CompletionsModel::class, $classes);
+    }
+
+    public function testUnsupportedProviderThrowsException()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Provider "amazon-bedrock" (Amazon Bedrock) is not supported by the models.dev bridge because it cannot be driven by the generic client.');
+
+        new ModelCatalog('amazon-bedrock');
+    }
+
+    public function testUsesGenericModelClassForOpenAiCompatibleProviders()
+    {
+        $catalog = new ModelCatalog('deepseek');
+        $classes = array_column($catalog->getModels(), 'class');
+
+        $this->assertContains(CompletionsModel::class, $classes);
+        $this->assertNotContains(Claude::class, $classes);
     }
 
     public function testAdditionalModelsAreMerged()
