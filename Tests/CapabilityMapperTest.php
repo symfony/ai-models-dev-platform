@@ -235,4 +235,32 @@ final class CapabilityMapperTest extends TestCase
 
         $this->assertContains(Capability::OUTPUT_IMAGE, $capabilities);
     }
+
+    public function testMapImageGenerationModelToImageCapabilities()
+    {
+        $modelData = [
+            'id' => 'gpt-image-1',
+            'name' => 'GPT Image 1',
+            'family' => 'gpt-image',
+            'attachment' => false,
+            'reasoning' => false,
+            'tool_call' => false,
+            'temperature' => false,
+            'modalities' => [
+                'input' => ['text', 'image'],
+                'output' => ['image'],
+            ],
+            'cost' => ['input' => 0, 'output' => 0],
+            'limit' => ['context' => 4096, 'output' => 1],
+        ];
+
+        $this->assertTrue(CapabilityMapper::isImageGenerationModel($modelData));
+        $this->assertSame([Capability::INPUT_TEXT, Capability::OUTPUT_IMAGE], CapabilityMapper::map($modelData));
+    }
+
+    public function testChatModelIsNotConsideredImageGeneration()
+    {
+        $this->assertFalse(CapabilityMapper::isImageGenerationModel(['id' => 'gpt-5']));
+        $this->assertFalse(CapabilityMapper::isImageGenerationModel(['id' => 'chatgpt-image-latest']));
+    }
 }

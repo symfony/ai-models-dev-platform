@@ -48,7 +48,30 @@ final class CapabilityMapper
             return self::mapEmbeddingCapabilities($modelData);
         }
 
+        if (self::isImageGenerationModel($modelData)) {
+            return [Capability::INPUT_TEXT, Capability::OUTPUT_IMAGE];
+        }
+
         return self::mapCompletionCapabilities($modelData);
+    }
+
+    /**
+     * Whether the model generates images through the dedicated image endpoint
+     * (OpenAI's `/v1/images/generations`) rather than the chat/completions API.
+     *
+     * @param array{id: string} $modelData
+     */
+    public static function isImageGenerationModel(array $modelData): bool
+    {
+        if (str_contains($modelData['id'], 'dall-e')) {
+            return true;
+        }
+
+        if (str_starts_with($modelData['id'], 'gpt-image')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
